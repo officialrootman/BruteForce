@@ -1,9 +1,11 @@
 #!/bin/bash
 
-# FTP sunucusu, kullanıcı adı listesi ve parola listesi
-SERVER=${1:-"ftp.example.com"}
-USER_LIST=${2:-"usernames.txt"}
-PASS_LIST=${3:-"passwords.txt"}
+# Kullanıcıdan input al
+read -p "FTP Sunucusu: " SERVER
+read -p "Kullanıcı adı listesi dosyası: " USER_LIST
+read -p "Parola listesi dosyası: " PASS_LIST
+
+# Log dosyası
 LOG_FILE="bruteforce.log"
 
 # Log dosyasını temizle
