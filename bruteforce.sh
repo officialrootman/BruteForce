@@ -3,9 +3,16 @@ import subprocess
 import threading
 import queue
 
+def get_user_input(prompt):
+    while True:
+        user_input = input(prompt)
+        if user_input.strip():
+            return user_input
+        print("Bu alan boş bırakılamaz. Lütfen geçerli bir değer girin.")
+
 # Kullanıcıdan input al
-server = input("FTP Sunucusu: ")
-user = input("Kullanıcı adı: ")
+server = get_user_input("FTP Sunucusu: ")
+user = get_user_input("Kullanıcı adı: ")
 
 # Log dosyası
 log_file = "bruteforce.log"
@@ -54,8 +61,13 @@ def worker():
         check_password(password, q)
         q.task_done()
 
+# Kullanıcıdan paralel iş parçacığı sayısını ve parola deneme sayısını al
+num_threads = int(get_user_input("İş parçacığı sayısı: "))
+num_passwords = int(get_user_input("Parola deneme sayısı: "))
+
+# İş parçacıklarını başlat
 threads = []
-for _ in range(10):
+for _ in range(num_threads):
     t = threading.Thread(target=worker)
     t.start()
     threads.append(t)
