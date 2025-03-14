@@ -15,9 +15,12 @@ with open(log_file, 'w'):
     pass
 
 # Rastgele parola oluşturma fonksiyonu
-def generate_passwords():
-    result = subprocess.run(['openssl', 'rand', '-base64', '10'], capture_output=True, text=True)
-    return [result.stdout.strip() for _ in range(10000)]
+def generate_passwords(num_passwords=10000):
+    passwords = []
+    for _ in range(num_passwords):
+        result = subprocess.run(['openssl', 'rand', '-base64', '10'], capture_output=True, text=True)
+        passwords.append(result.stdout.strip())
+    return passwords
 
 # Parola listesini oluştur
 pass_list = generate_passwords()
@@ -45,9 +48,15 @@ for password in pass_list:
     q.put(password)
 
 # İş parçacıklarını başlat
+def worker():
+    while not q.empty():
+        password = q.get()
+        check_password(password, q)
+        q.task_done()
+
 threads = []
 for _ in range(10):
-    t = threading.Thread(target=lambda q: q.put(check_password(q.get(), q)), args=(q,))
+    t = threading.Thread(target=worker)
     t.start()
     threads.append(t)
 
